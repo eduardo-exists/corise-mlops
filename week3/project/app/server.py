@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from loguru import logger
+from datetime import datetime
 
 from classifier import NewsCategoryClassifier
 
@@ -42,7 +43,7 @@ def startup_event():
     news_cls = NewsCategoryClassifier() # 1
     news_cls.load(MODEL_PATH) # 2
 
-    logfile_handler = logger.add(LOGS_OUTPUT_PATH, colorize=True) # 3
+    logfile_handler = logger.add(LOGS_OUTPUT_PATH, colorize=True, level='DEBUG') # 3
     logger.info("Setup completed")
 
 
@@ -75,9 +76,16 @@ def predict(request: PredictRequest):
     }
     3. Construct an instance of `PredictResponse` and return
     """
-    logger.info("Received Request: {}", request)
+    
+    start_ts = datetime.now()
     response = PredictResponse(scores=news_cls.predict_proba(request), label=news_cls.predict_label(request))
-    logger.info("Predicted Response: {}", response)
+    
+    logger.info({
+        'timestamp': start_ts.strftime("%Y:%m:%d %H:%M:%S"),
+        'request': request.json(),
+        'prediction':response.json(),
+        'latency': round((datetime.now() - start_ts).total_seconds() * 1000)
+    })
 
     return response
 
